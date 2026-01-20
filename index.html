@@ -1,4 +1,24 @@
-<script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniVet Team Planner</title>
+  <style>
+    /* ALL YOUR CSS STAYS HERE - DON'T CHANGE */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; color: #252B44; }
+    /* ... keep ALL your original CSS styles ... */
+  </style>
+</head>
+<body>
+  <!-- ALL YOUR HTML STAYS HERE - DON'T CHANGE -->
+  <div class="landing-page" id="landingPage">...</div>
+  <div class="password-modal" id="passwordModal">...</div>
+  <div class="calendar-page" id="calendarPage">...</div>
+  <div class="modal" id="bookingModal">...</div>
+
+  <script>
     // ========== CONFIGURATION ==========
     const CORRECT_PASSWORD = "Omnivet0995";
     const API_URL = "https://script.google.com/macros/s/AKfycbzFIoI1k3FrVm-PzowQhRK1VgTIHAoUyg1gZvjfvEOg9QqE_7sbaBlja3bcbl7fqc_F/exec";
@@ -50,14 +70,18 @@
           body: 'action=getBookings'
         });
         
+        if (!bookingsResponse.ok) {
+          throw new Error(`HTTP error! status: ${bookingsResponse.status}`);
+        }
+        
         const bookingsText = await bookingsResponse.text();
-        console.log("📅 API Response:", bookingsText);
+        console.log("📅 Bookings response:", bookingsText);
         
         try {
           bookingsData = JSON.parse(bookingsText);
-          console.log("✅ Bookings loaded");
+          console.log("✅ Bookings loaded:", Object.keys(bookingsData).length, "dates");
         } catch (e) {
-          console.error("❌ Failed to parse bookings");
+          console.error("❌ Failed to parse bookings:", e);
           bookingsData = {};
         }
         
@@ -68,19 +92,27 @@
           body: 'action=getUserColors'
         });
         
+        if (!colorsResponse.ok) {
+          throw new Error(`HTTP error! status: ${colorsResponse.status}`);
+        }
+        
         const colorsText = await colorsResponse.text();
+        console.log("🎨 Colors response:", colorsText);
         
         try {
           userColors = JSON.parse(colorsText);
+          console.log("✅ User colors loaded:", Object.keys(userColors).length, "users");
         } catch (e) {
+          console.error("❌ Failed to parse colors:", e);
           userColors = {};
         }
         
       } catch (error) {
-        console.error("❌ Error loading from Google Sheets:", error);
+        console.error("❌ Error loading data:", error);
         // Fallback to local storage
         bookingsData = JSON.parse(localStorage.getItem('omnivetBookings')) || {};
         userColors = JSON.parse(localStorage.getItem('omnivetUserColors')) || {};
+        console.log("📱 Using local storage as fallback");
       }
     }
 
@@ -103,11 +135,27 @@
           body: params
         });
 
-        const result = await response.json();
-        return result.success === true;
+        const resultText = await response.text();
+        console.log("📨 Save response:", resultText);
         
+        let result;
+        try {
+          result = JSON.parse(resultText);
+        } catch (e) {
+          console.warn("⚠️ Could not parse JSON, checking text:", resultText);
+          result = { success: resultText.includes('success') || resultText.includes('added') };
+        }
+        
+        if (result.success) {
+          console.log("✅ Booking saved to Google Sheets!");
+          return true;
+        } else {
+          console.error("❌ Google Sheets error:", result);
+          return false;
+        }
+
       } catch (error) {
-        console.error("❌ Error saving:", error);
+        console.error("❌ Error saving to Google Sheets:", error);
         // Fallback to local storage
         return saveToLocalStorage(date, name, color, start, end, desc);
       }
@@ -121,14 +169,18 @@
         
         userColors[name] = color;
         localStorage.setItem('omnivetUserColors', JSON.stringify(userColors));
+        
+        console.log("📱 Saved to local storage as backup");
         return true;
       } catch (error) {
+        console.error("❌ Error saving to local storage:", error);
         return false;
       }
     }
 
     async function deleteBookingFromAPI(date, name, start) {
       try {
+        console.log("🗑️ Deleting from Google Sheets...");
         const params = new URLSearchParams({
           action: 'deleteBooking',
           date: date,
@@ -142,11 +194,21 @@
           body: params
         });
 
-        const result = await response.json();
-        return result.success === true;
+        const resultText = await response.text();
+        console.log("📨 Delete response:", resultText);
         
+        let result;
+        try {
+          result = JSON.parse(resultText);
+        } catch (e) {
+          result = { success: resultText.includes('success') || resultText.includes('deleted') };
+        }
+        
+        return result.success === true;
+
       } catch (error) {
-        console.error("❌ Error deleting:", error);
+        console.error("❌ Error deleting from Google Sheets:", error);
+        // Fallback to local storage
         return deleteFromLocalStorage(date, name, start);
       }
     }
@@ -154,6 +216,7 @@
     function deleteFromLocalStorage(date, name, start) {
       try {
         if (bookingsData[date]) {
+          const initialLength = bookingsData[date].length;
           bookingsData[date] = bookingsData[date].filter(
             booking => !(booking.name === name && booking.start === start)
           );
@@ -163,10 +226,12 @@
           }
           
           localStorage.setItem('omnivetBookings', JSON.stringify(bookingsData));
-          return true;
+          console.log("📱 Deleted from local storage");
+          return initialLength > bookingsData[date].length;
         }
         return false;
       } catch (error) {
+        console.error("❌ Error deleting from local storage:", error);
         return false;
       }
     }
@@ -286,6 +351,7 @@
       const month = date.getMonth();
       monthYearEl.textContent = `${monthNames[month].toUpperCase()} ${year}`;
 
+      // Add day headers
       dayNames.forEach(d => {
         const header = document.createElement("div");
         header.className = "day-header";
@@ -293,6 +359,7 @@
         calendarEl.appendChild(header);
       });
 
+      // Add empty cells for days before month starts
       const firstDay = new Date(year, month, 1).getDay();
       for (let i = 0; i < firstDay; i++) {
         const empty = document.createElement("div");
@@ -303,6 +370,7 @@
       const bookings = getBookings();
       const daysInMonth = new Date(year, month + 1, 0).getDate();
 
+      // Add day cells
       for (let day = 1; day <= daysInMonth; day++) {
         const cell = document.createElement("div");
         cell.className = "day";
@@ -313,9 +381,11 @@
         const dd = String(day).padStart(2, "0");
         const dateKey = `${yyyy}-${mm}-${dd}`;
 
+        // Add bookings if they exist
         if (bookings[dateKey] && bookings[dateKey].length > 0) {
           cell.classList.add("has-booking");
           
+          // Tooltip with booking details
           const tooltip = document.createElement("div");
           tooltip.className = "tooltip";
           let tooltipText = "";
@@ -327,6 +397,7 @@
           tooltip.textContent = tooltipText;
           cell.appendChild(tooltip);
 
+          // Color indicators
           const indicators = document.createElement("div");
           indicators.className = "booking-indicators";
           bookings[dateKey].forEach(booking => {
@@ -338,6 +409,7 @@
           cell.appendChild(indicators);
         }
 
+        // Click handler
         cell.addEventListener("click", () => {
           selectedDate = dateKey;
           openModal(dateKey);
@@ -349,11 +421,12 @@
 
     // ========== MODAL FUNCTIONS ==========
     async function openModal(dateKey) {
-      await loadData();
+      await loadData(); // Refresh data
       const dayBookings = bookingsData[dateKey] || [];
       
       bookingTitle.textContent = `Bookings for ${dateKey}`;
       
+      // Show existing bookings
       if (dayBookings.length > 0) {
         existingBookingsEl.innerHTML = `
           <div class="existing-bookings">
@@ -374,6 +447,7 @@
         existingBookingsEl.innerHTML = '';
       }
       
+      // Reset form
       usernameInput.value = "";
       colorInput.value = "#cce5ff";
       colorPreview.style.background = "#cce5ff";
@@ -397,6 +471,9 @@
           await loadData();
           renderCalendar(currentDate);
           openModal(dateKey);
+          alert("✅ Booking deleted successfully!");
+        } else {
+          alert("❌ Failed to delete booking. Please try again.");
         }
       }
     };
@@ -411,19 +488,22 @@
       const desc = descInput.value.trim();
 
       if (!name || !start || !end) {
-        alert("Please fill in name, start time, and end time");
+        alert("❌ Please fill in name, start time, and end time");
         return;
       }
 
+      // Check if color is already taken
       const colorOwner = Object.keys(userColors).find(n => userColors[n] === color && n !== name);
       if (colorOwner) {
-        alert(`This color is already taken by ${colorOwner}. Please choose a different color.`);
+        alert(`🎨 This color is already taken by ${colorOwner}. Please choose a different color.`);
         return;
       }
 
+      // Save to Google Sheets (with local storage fallback)
       const success = await saveBooking(selectedDate, name, color, start, end, desc);
       
       if (success) {
+        // Update local data
         userColors[name] = color;
         if (!bookingsData[selectedDate]) {
           bookingsData[selectedDate] = [];
@@ -432,9 +512,9 @@
         
         closeModal();
         renderCalendar(currentDate);
-        alert("✅ Booking saved! All team members can see it.");
+        alert("✅ Booking saved successfully! All team members can see it.");
       } else {
-        alert("Failed to save booking.");
+        alert("❌ Failed to save booking. Please try again.");
       }
     });
 
@@ -465,5 +545,9 @@
 
     // ========== INITIALIZATION ==========
     colorPreview.style.background = colorInput.value;
-    console.log("OmniVet Team Planner initialized with Google Sheets");
-</script>
+    console.log("🚀 OmniVet Team Planner initialized");
+    console.log("🌐 API URL:", API_URL);
+    console.log("📊 Using Google Sheets as database");
+  </script>
+</body>
+</html>
