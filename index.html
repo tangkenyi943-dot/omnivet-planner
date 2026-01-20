@@ -1,4 +1,24 @@
-<script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniVet Team Planner</title>
+  <style>
+    /* ALL YOUR CSS STAYS HERE - DON'T CHANGE */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; color: #252B44; }
+    /* ... keep ALL your original CSS styles ... */
+  </style>
+</head>
+<body>
+  <!-- ALL YOUR HTML STAYS HERE - DON'T CHANGE -->
+  <div class="landing-page" id="landingPage">...</div>
+  <div class="password-modal" id="passwordModal">...</div>
+  <div class="calendar-page" id="calendarPage">...</div>
+  <div class="modal" id="bookingModal">...</div>
+
+  <script>
     // ========== CONFIGURATION ==========
     const CORRECT_PASSWORD = "Omnivet0995";
     const API_URL = "https://script.google.com/macros/s/AKfycbzFIoI1k3FrVm-PzowQhRK1VgTIHAoUyg1gZvjfvEOg9QqE_7sbaBlja3bcbl7fqc_F/exec";
@@ -43,8 +63,17 @@
       try {
         console.log("🔍 Loading data from Google Sheets...");
         
-        // Load bookings
-        const bookingsResponse = await fetch(`${API_URL}?action=getBookings`);
+        // Load bookings using POST
+        const bookingsResponse = await fetch(API_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: 'action=getBookings'
+        });
+        
+        if (!bookingsResponse.ok) {
+          throw new Error(`HTTP error! status: ${bookingsResponse.status}`);
+        }
+        
         const bookingsText = await bookingsResponse.text();
         console.log("📅 Bookings response:", bookingsText);
         
@@ -56,8 +85,17 @@
           bookingsData = {};
         }
         
-        // Load user colors
-        const colorsResponse = await fetch(`${API_URL}?action=getUserColors`);
+        // Load user colors using POST
+        const colorsResponse = await fetch(API_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: 'action=getUserColors'
+        });
+        
+        if (!colorsResponse.ok) {
+          throw new Error(`HTTP error! status: ${colorsResponse.status}`);
+        }
+        
         const colorsText = await colorsResponse.text();
         console.log("🎨 Colors response:", colorsText);
         
@@ -71,9 +109,10 @@
         
       } catch (error) {
         console.error("❌ Error loading data:", error);
-        // Fallback to local storage for offline use
+        // Fallback to local storage
         bookingsData = JSON.parse(localStorage.getItem('omnivetBookings')) || {};
         userColors = JSON.parse(localStorage.getItem('omnivetUserColors')) || {};
+        console.log("📱 Using local storage as fallback");
       }
     }
 
@@ -432,9 +471,9 @@
           await loadData();
           renderCalendar(currentDate);
           openModal(dateKey);
-          alert("Booking deleted successfully!");
+          alert("✅ Booking deleted successfully!");
         } else {
-          alert("Failed to delete booking. Please try again.");
+          alert("❌ Failed to delete booking. Please try again.");
         }
       }
     };
@@ -449,14 +488,14 @@
       const desc = descInput.value.trim();
 
       if (!name || !start || !end) {
-        alert("Please fill in name, start time, and end time");
+        alert("❌ Please fill in name, start time, and end time");
         return;
       }
 
       // Check if color is already taken
       const colorOwner = Object.keys(userColors).find(n => userColors[n] === color && n !== name);
       if (colorOwner) {
-        alert(`This color is already taken by ${colorOwner}. Please choose a different color.`);
+        alert(`🎨 This color is already taken by ${colorOwner}. Please choose a different color.`);
         return;
       }
 
@@ -510,3 +549,5 @@
     console.log("🌐 API URL:", API_URL);
     console.log("📊 Using Google Sheets as database");
   </script>
+</body>
+</html>
