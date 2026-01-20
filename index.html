@@ -566,11 +566,17 @@
   </div>
 
   <script>
+    // ========== CONFIGURATION ==========
     const CORRECT_PASSWORD = "Omnivet0995";
-    let bookingsData = {}; // { "2025-01-20": [{name, color, start, end, desc}] }
-    let userColors = {}; // { "John Doe": "#cce5ff" }
+    const API_URL = "https://script.google.com/macros/s/AKfycbxVpqJtnwnHQuBkVv36DQqjDEYOrkwpFkPwS3E8gGgVqPWSdrzhLfw89RPXpMYqir8v/exec";
+    
+    // ========== STATE VARIABLES ==========
+    let bookingsData = {};
+    let userColors = {};
+    let currentDate = new Date();
+    let selectedDate = null;
 
-    // Page Elements
+    // ========== DOM ELEMENTS ==========
     const landingPage = document.getElementById('landingPage');
     const calendarPage = document.getElementById('calendarPage');
     const passwordModal = document.getElementById('passwordModal');
@@ -580,8 +586,6 @@
     const submitPassword = document.getElementById('submitPassword');
     const cancelPassword = document.getElementById('cancelPassword');
     const errorMessage = document.getElementById('errorMessage');
-
-    // Calendar Elements
     const calendarEl = document.getElementById('calendar');
     const monthYearEl = document.getElementById('monthYear');
     const prevBtn = document.getElementById('prevBtn');
@@ -598,13 +602,86 @@
     const descInput = document.getElementById('desc');
     const existingBookingsEl = document.getElementById('existingBookings');
 
-    let currentDate = new Date();
-    let selectedDate = null;
-
     const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
     const dayNames = ["SU","MO","TU","WE","TH","FR","SA"];
 
-    // Password Functions
+    // ========== API FUNCTIONS ==========
+    async function loadData() {
+      try {
+        console.log("Loading data from API...");
+        
+        // Load bookings
+        const bookingsResponse = await fetch(`${API_URL}?action=getBookings`);
+        if (!bookingsResponse.ok) throw new Error(`HTTP error! status: ${bookingsResponse.status}`);
+        bookingsData = await bookingsResponse.json();
+        console.log("Bookings loaded:", bookingsData);
+        
+        // Load user colors
+        const colorsResponse = await fetch(`${API_URL}?action=getUserColors`);
+        if (!colorsResponse.ok) throw new Error(`HTTP error! status: ${colorsResponse.status}`);
+        userColors = await colorsResponse.json();
+        console.log("User colors loaded:", userColors);
+        
+      } catch (error) {
+        console.error("Error loading data:", error);
+        alert("Failed to load data from server. Please check your internet connection.");
+        bookingsData = {};
+        userColors = {};
+      }
+    }
+
+    async function saveBooking(date, name, color, start, end, desc) {
+      try {
+        const params = new URLSearchParams({
+          action: 'addBooking',
+          date: date,
+          name: name,
+          color: color,
+          start: start,
+          end: end,
+          desc: desc || ''
+        });
+
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          body: params
+        });
+
+        const result = await response.json();
+        console.log("Save booking result:", result);
+        return result.success === true;
+
+      } catch (error) {
+        console.error("Error saving booking:", error);
+        return false;
+      }
+    }
+
+    async function deleteBookingFromAPI(date, name, start) {
+      try {
+        const params = new URLSearchParams({
+          action: 'deleteBooking',
+          date: date,
+          name: name,
+          start: start
+        });
+
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          body: params
+        });
+
+        const result = await response.json();
+        console.log("Delete booking result:", result);
+        return result.success === true;
+
+      } catch (error) {
+        console.error("Error deleting booking:", error);
+        return false;
+      }
+    }
+
+    // ========== PASSWORD FUNCTIONS ==========
     enterBtn.addEventListener('click', () => {
       passwordModal.classList.add('active');
       passwordInput.value = '';
@@ -615,16 +692,15 @@
     submitPassword.addEventListener('click', checkPassword);
     
     passwordInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        checkPassword();
-      }
+      if (e.key === 'Enter') checkPassword();
     });
 
-    function checkPassword() {
+    async function checkPassword() {
       if (passwordInput.value === CORRECT_PASSWORD) {
         passwordModal.classList.remove('active');
         landingPage.style.display = 'none';
         calendarPage.classList.add('active');
+        await loadData();
         renderCalendar(currentDate);
       } else {
         errorMessage.classList.add('active');
@@ -644,12 +720,11 @@
       landingPage.style.display = 'flex';
     });
 
-    // Color preview update
+    // ========== COLOR FUNCTIONS ==========
     colorInput.addEventListener('change', () => {
       colorPreview.style.background = colorInput.value;
     });
 
-    // Username change - auto-assign their saved color and update available colors
     usernameInput.addEventListener('input', () => {
       const name = usernameInput.value.trim();
       updateAvailableColors(name);
@@ -659,7 +734,6 @@
       }
     });
 
-    // Update color dropdown to show which colors are taken
     function updateAvailableColors(currentName) {
       const colors = userColors;
       const options = colorInput.querySelectorAll('option');
@@ -677,7 +751,6 @@
         }
       });
       
-      // If current selection is disabled, reset to first available
       if (colorInput.selectedOptions[0]?.disabled) {
         const firstAvailable = Array.from(options).find(opt => !opt.disabled);
         if (firstAvailable) {
@@ -687,21 +760,9 @@
       }
     }
 
-    // Booking Functions
+    // ========== CALENDAR FUNCTIONS ==========
     function getBookings() {
       return bookingsData;
-    }
-
-    function saveBookings(bookings) {
-      bookingsData = bookings;
-    }
-
-    function getUserColors() {
-      return userColors;
-    }
-
-    function saveUserColor(name, color) {
-      userColors[name] = color;
     }
 
     function formatAMPM(timeStr) {
@@ -735,6 +796,7 @@
       const month = date.getMonth();
       monthYearEl.textContent = `${monthNames[month].toUpperCase()} ${year}`;
 
+      // Add day headers
       dayNames.forEach(d => {
         const header = document.createElement("div");
         header.className = "day-header";
@@ -742,9 +804,8 @@
         calendarEl.appendChild(header);
       });
 
+      // Add empty cells for days before month starts
       const firstDay = new Date(year, month, 1).getDay();
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-
       for (let i = 0; i < firstDay; i++) {
         const empty = document.createElement("div");
         empty.className = "day empty";
@@ -752,7 +813,9 @@
       }
 
       const bookings = getBookings();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
 
+      // Add day cells
       for (let day = 1; day <= daysInMonth; day++) {
         const cell = document.createElement("div");
         cell.className = "day";
@@ -763,14 +826,15 @@
         const dd = String(day).padStart(2, "0");
         const dateKey = `${yyyy}-${mm}-${dd}`;
 
+        // Add bookings if they exist
         if (bookings[dateKey] && bookings[dateKey].length > 0) {
           cell.classList.add("has-booking");
-          const dayBookings = bookings[dateKey];
           
+          // Tooltip with booking details
           const tooltip = document.createElement("div");
           tooltip.className = "tooltip";
           let tooltipText = "";
-          dayBookings.forEach((booking, idx) => {
+          bookings[dateKey].forEach((booking, idx) => {
             if (idx > 0) tooltipText += "\n---\n";
             tooltipText += `${booking.name}\n${formatAMPM(booking.start)} - ${formatAMPM(booking.end)}`;
             if (booking.desc) tooltipText += `\n${booking.desc}`;
@@ -778,9 +842,10 @@
           tooltip.textContent = tooltipText;
           cell.appendChild(tooltip);
 
+          // Color indicators
           const indicators = document.createElement("div");
           indicators.className = "booking-indicators";
-          dayBookings.forEach(booking => {
+          bookings[dateKey].forEach(booking => {
             const indicator = document.createElement("div");
             indicator.className = "booking-indicator";
             indicator.style.background = booking.color;
@@ -789,6 +854,7 @@
           cell.appendChild(indicators);
         }
 
+        // Click handler
         cell.addEventListener("click", () => {
           selectedDate = dateKey;
           openModal(dateKey);
@@ -798,9 +864,10 @@
       }
     }
 
-    function openModal(dateKey) {
-      const bookings = getBookings();
-      const dayBookings = bookings[dateKey] || [];
+    // ========== MODAL FUNCTIONS ==========
+    async function openModal(dateKey) {
+      await loadData(); // Refresh data
+      const dayBookings = bookingsData[dateKey] || [];
       
       bookingTitle.textContent = `Bookings for ${dateKey}`;
       
@@ -816,7 +883,7 @@
                   <small>${formatAMPM(booking.start)} - ${formatAMPM(booking.end)}</small>
                   ${booking.desc ? `<br><small>${booking.desc}</small>` : ''}
                 </div>
-                <button class="delete-btn" onclick="deleteBooking('${dateKey}', ${idx})">Delete</button>
+                <button class="delete-btn" onclick="handleDeleteBooking('${dateKey}', '${booking.name}', '${booking.start}', ${idx})">Delete</button>
               </div>
             `).join('')}
           </div>
@@ -833,9 +900,7 @@
       endInput.value = "";
       descInput.value = "";
       
-      // Update available colors for new booking
       updateAvailableColors("");
-      
       modal.classList.add("active");
     }
 
@@ -844,20 +909,20 @@
       selectedDate = null;
     }
 
-    window.deleteBooking = function(dateKey, index) {
-      const bookings = getBookings();
-      if (bookings[dateKey]) {
-        bookings[dateKey].splice(index, 1);
-        if (bookings[dateKey].length === 0) {
-          delete bookings[dateKey];
+    window.handleDeleteBooking = async function(dateKey, name, startTime, index) {
+      if (confirm(`Delete booking for ${name} on ${dateKey}?`)) {
+        const success = await deleteBookingFromAPI(dateKey, name, startTime);
+        if (success) {
+          await loadData();
+          renderCalendar(currentDate);
+          openModal(dateKey);
+        } else {
+          alert("Failed to delete booking. Please try again.");
         }
-        saveBookings(bookings);
-        renderCalendar(currentDate);
-        openModal(dateKey);
       }
     };
 
-    confirmBtn.addEventListener("click", () => {
+    confirmBtn.addEventListener("click", async () => {
       if (!selectedDate) return;
       
       const name = usernameInput.value.trim();
@@ -871,29 +936,34 @@
         return;
       }
 
-      // Check if color is already taken by someone else (different name)
+      // Check if color is already taken
       const colorOwner = Object.keys(userColors).find(n => userColors[n] === color && n !== name);
       if (colorOwner) {
         alert(`This color is already taken by ${colorOwner}. Please choose a different color.`);
         return;
       }
 
-      // Save user's color preference (first time or update if they're the owner)
-      saveUserColor(name, color);
-
-      const bookings = getBookings();
-      if (!bookings[selectedDate]) {
-        bookings[selectedDate] = [];
-      }
-      bookings[selectedDate].push({ name, color, start, end, desc });
-      saveBookings(bookings);
+      // Save to Google Sheets
+      const success = await saveBooking(selectedDate, name, color, start, end, desc);
       
-      closeModal();
-      renderCalendar(currentDate);
+      if (success) {
+        // Update local data
+        userColors[name] = color;
+        if (!bookingsData[selectedDate]) {
+          bookingsData[selectedDate] = [];
+        }
+        bookingsData[selectedDate].push({ name, color, start, end, desc });
+        
+        closeModal();
+        renderCalendar(currentDate);
+      } else {
+        alert("Failed to save booking. Please try again.");
+      }
     });
 
     cancelBtn.addEventListener("click", closeModal);
 
+    // ========== NAVIGATION ==========
     prevBtn.addEventListener("click", () => {
       currentDate.setMonth(currentDate.getMonth() - 1);
       renderCalendar(currentDate);
@@ -905,9 +975,7 @@
     });
 
     modal.addEventListener("click", (e) => {
-      if (e.target === modal) {
-        closeModal();
-      }
+      if (e.target === modal) closeModal();
     });
 
     passwordModal.addEventListener("click", (e) => {
@@ -918,8 +986,10 @@
       }
     });
 
-    // Initialize color preview
+    // ========== INITIALIZATION ==========
     colorPreview.style.background = colorInput.value;
+    console.log("OmniVet Team Planner initialized");
+    console.log("API URL:", API_URL);
   </script>
 </body>
 </html>
