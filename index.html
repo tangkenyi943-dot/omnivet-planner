@@ -1,574 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OmniVet Team Planner</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      color: #252B44;
-    }
-
-    /* Landing Page Styles */
-    .landing-page {
-      min-height: 100vh;
-      background: linear-gradient(180deg, #d4d8e8 0%, #d4d8e8 60%, #a8dcd1 60%, #a8dcd1 100%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 40px 20px;
-    }
-
-    .header {
-      width: 100%;
-      max-width: 1200px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 60px;
-    }
-
-    .services-link {
-      color: #4a3428;
-      font-size: 18px;
-      text-decoration: none;
-      font-weight: 500;
-    }
-
-    .main-content {
-      max-width: 800px;
-      width: 100%;
-    }
-
-    .welcome-title {
-      font-size: 4em;
-      font-weight: 900;
-      color: #4a3428;
-      line-height: 1.1;
-      margin-bottom: 20px;
-      text-transform: uppercase;
-    }
-
-    @media (max-width: 768px) {
-      .welcome-title {
-        font-size: 2.5em;
-      }
-    }
-
-    .welcome-subtitle {
-      font-size: 1.2em;
-      color: #4a3428;
-      margin-bottom: 40px;
-    }
-
-    .enter-btn {
-      background: #4a3428;
-      color: white;
-      padding: 18px 50px;
-      border: none;
-      border-radius: 50px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      transition: transform 0.2s, box-shadow 0.2s;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    }
-
-    .enter-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(0,0,0,0.3);
-    }
-
-    /* Password Modal */
-    .password-modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.6);
-      justify-content: center;
-      align-items: center;
-      z-index: 2000;
-    }
-
-    .password-modal.active {
-      display: flex;
-    }
-
-    .password-content {
-      background: white;
-      padding: 40px;
-      border-radius: 12px;
-      max-width: 400px;
-      width: 90%;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-      text-align: center;
-    }
-
-    .password-content h2 {
-      margin-bottom: 20px;
-      color: #4a3428;
-    }
-
-    .password-content input {
-      width: 100%;
-      padding: 12px;
-      border: 2px solid #ddd;
-      border-radius: 8px;
-      font-size: 16px;
-      margin-bottom: 20px;
-    }
-
-    .password-content button {
-      width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      cursor: pointer;
-      margin-top: 8px;
-      font-weight: 600;
-      transition: background 0.2s;
-    }
-
-    .password-content button:first-of-type {
-      background: #4a3428;
-      color: white;
-    }
-
-    .password-content button:first-of-type:hover {
-      background: #3a2818;
-    }
-
-    .password-content button:last-of-type {
-      background: #ddd;
-      color: #4a3428;
-    }
-
-    .password-content button:last-of-type:hover {
-      background: #ccc;
-    }
-
-    .error-message {
-      color: #d32f2f;
-      font-size: 14px;
-      margin-bottom: 10px;
-      display: none;
-    }
-
-    .error-message.active {
-      display: block;
-    }
-
-    /* Calendar Page Styles */
-    .calendar-page {
-      display: none;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #fdfdfd, #f0f4ff);
-      padding: 40px;
-    }
-
-    @media (max-width: 768px) {
-      .calendar-page {
-        padding: 20px 10px;
-      }
-    }
-
-    .calendar-page.active {
-      display: block;
-    }
-
-    .calendar-container {
-      max-width: 900px;
-      margin: 0 auto;
-      border-radius: 16px;
-      padding: 20px;
-      background: #fff;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-    }
-
-    .calendar-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-
-    .calendar-header h2 {
-      font-size: 1.6em;
-      letter-spacing: 2px;
-      margin: 0;
-    }
-
-    .calendar-header button {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      border: none;
-      background: #252B44;
-      color: #fff;
-      font-size: 18px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .calendar-header button:hover {
-      background: #FFDC17;
-      color: #252B44;
-    }
-
-    .back-btn {
-      background: #4a3428;
-      color: white;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      margin-bottom: 20px;
-      font-size: 14px;
-      transition: background 0.2s;
-    }
-
-    .back-btn:hover {
-      background: #3a2818;
-    }
-
-    .calendar-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 10px;
-    }
-
-    @media (max-width: 768px) {
-      .calendar-grid {
-        gap: 5px;
-      }
-    }
-
-    .day-header {
-      font-weight: bold;
-      text-align: center;
-      padding: 10px;
-      background: #FFDC17;
-      border-radius: 8px;
-      color: #252B44;
-    }
-
-    .day {
-      height: 90px;
-      border-radius: 10px;
-      text-align: right;
-      padding: 8px;
-      cursor: pointer;
-      background: #f9f9f9;
-      position: relative;
-      transition: transform 0.2s, background 0.2s;
-      box-shadow: inset 0 0 0 1px #ddd;
-    }
-
-    @media (max-width: 768px) {
-      .day {
-        height: 70px;
-        padding: 4px;
-        font-size: 14px;
-      }
-    }
-
-    .day:hover {
-      background: #FFDC17;
-      transform: scale(1.05);
-    }
-
-    .day.has-booking {
-      font-weight: bold;
-    }
-
-    .booking-indicators {
-      position: absolute;
-      bottom: 4px;
-      left: 4px;
-      right: 4px;
-      display: flex;
-      gap: 2px;
-      height: 6px;
-    }
-
-    .booking-indicator {
-      flex: 1;
-      border-radius: 2px;
-    }
-
-    .empty {
-      background: transparent;
-      border: none;
-      box-shadow: none;
-      cursor: default;
-    }
-
-    .empty:hover {
-      background: transparent;
-      transform: none;
-    }
-
-    .tooltip {
-      visibility: hidden;
-      background: #333;
-      color: #fff;
-      text-align: left;
-      border-radius: 6px;
-      padding: 8px;
-      position: absolute;
-      z-index: 1;
-      bottom: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      white-space: pre-line;
-      font-size: 12px;
-      min-width: 180px;
-      max-width: 250px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-      margin-bottom: 5px;
-    }
-
-    .day:hover .tooltip {
-      visibility: visible;
-    }
-
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
-
-    .modal.active {
-      display: flex;
-    }
-
-    .modal-content {
-      background: #fff;
-      padding: 24px;
-      border-radius: 12px;
-      max-width: 500px;
-      width: 90%;
-      max-height: 80vh;
-      overflow-y: auto;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-    }
-
-    .modal-content h2 {
-      margin-top: 0;
-      text-align: center;
-      color: #252B44;
-    }
-
-    .existing-bookings {
-      margin-bottom: 20px;
-      padding: 15px;
-      background: #f5f5f5;
-      border-radius: 8px;
-    }
-
-    .existing-bookings h3 {
-      margin-top: 0;
-      margin-bottom: 10px;
-      font-size: 16px;
-      color: #252B44;
-    }
-
-    .booking-item {
-      background: white;
-      padding: 10px;
-      margin-bottom: 8px;
-      border-radius: 6px;
-      border-left: 4px solid;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .booking-info {
-      flex: 1;
-    }
-
-    .booking-item strong {
-      display: block;
-      margin-bottom: 4px;
-    }
-
-    .booking-item small {
-      color: #666;
-      font-size: 12px;
-    }
-
-    .delete-btn {
-      background: #d32f2f;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-      transition: background 0.2s;
-    }
-
-    .delete-btn:hover {
-      background: #b71c1c;
-    }
-
-    label {
-      display: block;
-      margin-top: 12px;
-      font-weight: bold;
-      color: #252B44;
-    }
-
-    input, textarea, select {
-      width: 100%;
-      margin-top: 6px;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 14px;
-      box-sizing: border-box;
-    }
-
-    textarea {
-      min-height: 80px;
-      resize: vertical;
-    }
-
-    .color-preview {
-      display: inline-block;
-      width: 30px;
-      height: 30px;
-      border-radius: 4px;
-      margin-left: 10px;
-      vertical-align: middle;
-      border: 2px solid #ddd;
-    }
-
-    .modal-content button {
-      width: 100%;
-      margin-top: 14px;
-      padding: 10px;
-      border-radius: 8px;
-      border: none;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .modal-content button:first-of-type {
-      background: #252B44;
-      color: #fff;
-    }
-
-    .modal-content button:first-of-type:hover {
-      background: #FFDC17;
-      color: #252B44;
-    }
-
-    .modal-content button:last-of-type {
-      background: #ddd;
-      color: #252B44;
-    }
-
-    .modal-content button:last-of-type:hover {
-      background: #ccc;
-    }
-  </style>
-</head>
-<body>
-  <!-- Landing Page -->
-  <div class="landing-page" id="landingPage">
-    <div class="header">
-      <a href="#" class="services-link">Services</a>
-    </div>
-    
-    <div class="main-content">
-      <h1 class="welcome-title">WELCOME TO OMNIVET<br>TEAM PLANNER</h1>
-      <p class="welcome-subtitle">Welcome to Team Planner For OmniVet Staffs</p>
-      <button class="enter-btn" id="enterBtn">ENTER YOUR SLOTS</button>
-    </div>
-  </div>
-
-  <!-- Password Modal -->
-  <div class="password-modal" id="passwordModal">
-    <div class="password-content">
-      <h2>Enter Password</h2>
-      <p class="error-message" id="errorMessage">Incorrect password. Please try again.</p>
-      <input type="password" id="passwordInput" placeholder="Enter password">
-      <button id="submitPassword">Submit</button>
-      <button id="cancelPassword">Cancel</button>
-    </div>
-  </div>
-
-  <!-- Calendar Page -->
-  <div class="calendar-page" id="calendarPage">
-    <div class="calendar-container">
-      <button class="back-btn" id="backBtn">← Back to Home</button>
-      <div class="calendar-header">
-        <button id="prevBtn">◀</button>
-        <h2 id="monthYear"></h2>
-        <button id="nextBtn">▶</button>
-      </div>
-      <div class="calendar-grid" id="calendar"></div>
-    </div>
-  </div>
-
-  <!-- Booking Modal -->
-  <div class="modal" id="bookingModal">
-    <div class="modal-content">
-      <h2 id="bookingTitle"></h2>
-      <div id="existingBookings"></div>
-      <h3 style="margin-top: 20px; margin-bottom: 10px;">Add New Booking</h3>
-      <label for="username">Your name</label>
-      <input type="text" id="username" placeholder="Enter your name" />
-      <label for="color">Choose your color <span class="color-preview" id="colorPreview"></span></label>
-      <select id="color">
-        <option value="#f8d7da">Red</option>
-        <option value="#cce5ff">Blue</option>
-        <option value="#fff3cd">Yellow</option>
-        <option value="#d4edda">Green</option>
-        <option value="#ffd6a5">Orange</option>
-        <option value="#e2c6ff">Purple</option>
-        <option value="#a5f2ff">Teal</option>
-        <option value="#f5a5a5">Pink</option>
-        <option value="#a5a5f5">Indigo</option>
-      </select>
-      <label for="start">Start time</label>
-      <input type="text" id="start" placeholder="e.g. 8am or 14:00" />
-      <label for="end">End time</label>
-      <input type="text" id="end" placeholder="e.g. 5:30pm or 17:30" />
-      <label for="desc">Description</label>
-      <textarea id="desc" placeholder="Enter booking details"></textarea>
-      <button id="confirmBtn">Confirm Booking</button>
-      <button id="cancelBtn">Cancel</button>
-    </div>
-  </div>
-
-  <script>
+<script>
     // ========== CONFIGURATION ==========
     const CORRECT_PASSWORD = "Omnivet0995";
-    const API_URL = "https://script.google.com/macros/s/AKfycbxVpqJtnwnHQuBkVv36DQqjDEYOrkwpFkPwS3E8gGgVqPWSdrzhLfw89RPXpMYqir8v/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbzFIoI1k3FrVm-PzowQhRK1VgTIHAoUyg1gZvjfvEOg9QqE_7sbaBlja3bcbl7fqc_F/exec";
     
     // ========== STATE VARIABLES ==========
     let bookingsData = {};
@@ -608,38 +41,37 @@
     // ========== API FUNCTIONS ==========
     async function loadData() {
       try {
-        console.log("Loading data from Google Sheets...");
+        console.log("🔍 Loading data from Google Sheets...");
         
         // Load bookings
         const bookingsResponse = await fetch(`${API_URL}?action=getBookings`);
         const bookingsText = await bookingsResponse.text();
-        console.log("Bookings raw response:", bookingsText);
+        console.log("📅 Bookings response:", bookingsText);
         
         try {
           bookingsData = JSON.parse(bookingsText);
+          console.log("✅ Bookings loaded:", Object.keys(bookingsData).length, "dates");
         } catch (e) {
-          console.error("Failed to parse bookings:", e);
+          console.error("❌ Failed to parse bookings:", e);
           bookingsData = {};
         }
         
         // Load user colors
         const colorsResponse = await fetch(`${API_URL}?action=getUserColors`);
         const colorsText = await colorsResponse.text();
-        console.log("Colors raw response:", colorsText);
+        console.log("🎨 Colors response:", colorsText);
         
         try {
           userColors = JSON.parse(colorsText);
+          console.log("✅ User colors loaded:", Object.keys(userColors).length, "users");
         } catch (e) {
-          console.error("Failed to parse colors:", e);
+          console.error("❌ Failed to parse colors:", e);
           userColors = {};
         }
         
-        console.log("Data loaded successfully");
-        
       } catch (error) {
-        console.error("Error loading data:", error);
-        alert("Note: Using local storage only. Appointments won't sync across devices.");
-        // Fallback to local storage
+        console.error("❌ Error loading data:", error);
+        // Fallback to local storage for offline use
         bookingsData = JSON.parse(localStorage.getItem('omnivetBookings')) || {};
         userColors = JSON.parse(localStorage.getItem('omnivetUserColors')) || {};
       }
@@ -647,7 +79,7 @@
 
     async function saveBooking(date, name, color, start, end, desc) {
       try {
-        console.log("Saving to Google Sheets...");
+        console.log("💾 Saving to Google Sheets...");
         const params = new URLSearchParams({
           action: 'addBooking',
           date: date,
@@ -660,23 +92,31 @@
 
         const response = await fetch(API_URL, {
           method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
           body: params
         });
 
         const resultText = await response.text();
-        console.log("Save response:", resultText);
+        console.log("📨 Save response:", resultText);
         
         let result;
         try {
           result = JSON.parse(resultText);
         } catch (e) {
-          result = { success: resultText.includes("success") || resultText.includes("added") };
+          console.warn("⚠️ Could not parse JSON, checking text:", resultText);
+          result = { success: resultText.includes('success') || resultText.includes('added') };
         }
         
-        return result.success === true;
+        if (result.success) {
+          console.log("✅ Booking saved to Google Sheets!");
+          return true;
+        } else {
+          console.error("❌ Google Sheets error:", result);
+          return false;
+        }
 
       } catch (error) {
-        console.error("Error saving to Google Sheets:", error);
+        console.error("❌ Error saving to Google Sheets:", error);
         // Fallback to local storage
         return saveToLocalStorage(date, name, color, start, end, desc);
       }
@@ -691,15 +131,17 @@
         userColors[name] = color;
         localStorage.setItem('omnivetUserColors', JSON.stringify(userColors));
         
+        console.log("📱 Saved to local storage as backup");
         return true;
       } catch (error) {
-        console.error("Error saving to local storage:", error);
+        console.error("❌ Error saving to local storage:", error);
         return false;
       }
     }
 
     async function deleteBookingFromAPI(date, name, start) {
       try {
+        console.log("🗑️ Deleting from Google Sheets...");
         const params = new URLSearchParams({
           action: 'deleteBooking',
           date: date,
@@ -709,23 +151,24 @@
 
         const response = await fetch(API_URL, {
           method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
           body: params
         });
 
         const resultText = await response.text();
-        console.log("Delete response:", resultText);
+        console.log("📨 Delete response:", resultText);
         
         let result;
         try {
           result = JSON.parse(resultText);
         } catch (e) {
-          result = { success: resultText.includes("success") || resultText.includes("deleted") };
+          result = { success: resultText.includes('success') || resultText.includes('deleted') };
         }
         
         return result.success === true;
 
       } catch (error) {
-        console.error("Error deleting from Google Sheets:", error);
+        console.error("❌ Error deleting from Google Sheets:", error);
         // Fallback to local storage
         return deleteFromLocalStorage(date, name, start);
       }
@@ -734,6 +177,7 @@
     function deleteFromLocalStorage(date, name, start) {
       try {
         if (bookingsData[date]) {
+          const initialLength = bookingsData[date].length;
           bookingsData[date] = bookingsData[date].filter(
             booking => !(booking.name === name && booking.start === start)
           );
@@ -743,11 +187,12 @@
           }
           
           localStorage.setItem('omnivetBookings', JSON.stringify(bookingsData));
-          return true;
+          console.log("📱 Deleted from local storage");
+          return initialLength > bookingsData[date].length;
         }
         return false;
       } catch (error) {
-        console.error("Error deleting from local storage:", error);
+        console.error("❌ Error deleting from local storage:", error);
         return false;
       }
     }
@@ -987,6 +432,7 @@
           await loadData();
           renderCalendar(currentDate);
           openModal(dateKey);
+          alert("Booking deleted successfully!");
         } else {
           alert("Failed to delete booking. Please try again.");
         }
@@ -1027,9 +473,9 @@
         
         closeModal();
         renderCalendar(currentDate);
-        alert("Booking saved successfully!");
+        alert("✅ Booking saved successfully! All team members can see it.");
       } else {
-        alert("Failed to save booking. Please try again.");
+        alert("❌ Failed to save booking. Please try again.");
       }
     });
 
@@ -1060,8 +506,7 @@
 
     // ========== INITIALIZATION ==========
     colorPreview.style.background = colorInput.value;
-    console.log("OmniVet Team Planner initialized");
-    console.log("Using Google Script API:", API_URL);
+    console.log("🚀 OmniVet Team Planner initialized");
+    console.log("🌐 API URL:", API_URL);
+    console.log("📊 Using Google Sheets as database");
   </script>
-</body>
-</html>
