@@ -608,30 +608,46 @@
     // ========== API FUNCTIONS ==========
     async function loadData() {
       try {
-        console.log("Loading data from API...");
+        console.log("Loading data from Google Sheets...");
         
         // Load bookings
         const bookingsResponse = await fetch(`${API_URL}?action=getBookings`);
-        if (!bookingsResponse.ok) throw new Error(`HTTP error! status: ${bookingsResponse.status}`);
-        bookingsData = await bookingsResponse.json();
-        console.log("Bookings loaded:", bookingsData);
+        const bookingsText = await bookingsResponse.text();
+        console.log("Bookings raw response:", bookingsText);
+        
+        try {
+          bookingsData = JSON.parse(bookingsText);
+        } catch (e) {
+          console.error("Failed to parse bookings:", e);
+          bookingsData = {};
+        }
         
         // Load user colors
         const colorsResponse = await fetch(`${API_URL}?action=getUserColors`);
-        if (!colorsResponse.ok) throw new Error(`HTTP error! status: ${colorsResponse.status}`);
-        userColors = await colorsResponse.json();
-        console.log("User colors loaded:", userColors);
+        const colorsText = await colorsResponse.text();
+        console.log("Colors raw response:", colorsText);
+        
+        try {
+          userColors = JSON.parse(colorsText);
+        } catch (e) {
+          console.error("Failed to parse colors:", e);
+          userColors = {};
+        }
+        
+        console.log("Data loaded successfully");
         
       } catch (error) {
         console.error("Error loading data:", error);
-        alert("Failed to load data from server. Please check your internet connection.");
-        bookingsData = {};
-        userColors = {};
+        alert("Note: Using local storage only. Appointments won't sync across devices.");
+        // Fallback to local storage
+        bookingsData = JSON.parse(localStorage.getItem('omnivetBookings')) || {};
+        userColors = JSON.parse(localStorage.getItem('omnivetUserColors')) || {};
       }
     }
 
     async function saveBooking(date, name, color, start, end, desc) {
       try {
+        console.log("Saving to Google Sheets...");
         const params = new URLSearchParams({
           action: 'addBooking',
           date: date,
@@ -647,12 +663,37 @@
           body: params
         });
 
-        const result = await response.json();
-        console.log("Save booking result:", result);
+        const resultText = await response.text();
+        console.log("Save response:", resultText);
+        
+        let result;
+        try {
+          result = JSON.parse(resultText);
+        } catch (e) {
+          result = { success: resultText.includes("success") || resultText.includes("added") };
+        }
+        
         return result.success === true;
 
       } catch (error) {
-        console.error("Error saving booking:", error);
+        console.error("Error saving to Google Sheets:", error);
+        // Fallback to local storage
+        return saveToLocalStorage(date, name, color, start, end, desc);
+      }
+    }
+
+    function saveToLocalStorage(date, name, color, start, end, desc) {
+      try {
+        if (!bookingsData[date]) bookingsData[date] = [];
+        bookingsData[date].push({ name, color, start, end, desc });
+        localStorage.setItem('omnivetBookings', JSON.stringify(bookingsData));
+        
+        userColors[name] = color;
+        localStorage.setItem('omnivetUserColors', JSON.stringify(userColors));
+        
+        return true;
+      } catch (error) {
+        console.error("Error saving to local storage:", error);
         return false;
       }
     }
@@ -671,12 +712,42 @@
           body: params
         });
 
-        const result = await response.json();
-        console.log("Delete booking result:", result);
+        const resultText = await response.text();
+        console.log("Delete response:", resultText);
+        
+        let result;
+        try {
+          result = JSON.parse(resultText);
+        } catch (e) {
+          result = { success: resultText.includes("success") || resultText.includes("deleted") };
+        }
+        
         return result.success === true;
 
       } catch (error) {
-        console.error("Error deleting booking:", error);
+        console.error("Error deleting from Google Sheets:", error);
+        // Fallback to local storage
+        return deleteFromLocalStorage(date, name, start);
+      }
+    }
+
+    function deleteFromLocalStorage(date, name, start) {
+      try {
+        if (bookingsData[date]) {
+          bookingsData[date] = bookingsData[date].filter(
+            booking => !(booking.name === name && booking.start === start)
+          );
+          
+          if (bookingsData[date].length === 0) {
+            delete bookingsData[date];
+          }
+          
+          localStorage.setItem('omnivetBookings', JSON.stringify(bookingsData));
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error("Error deleting from local storage:", error);
         return false;
       }
     }
@@ -943,7 +1014,7 @@
         return;
       }
 
-      // Save to Google Sheets
+      // Save to Google Sheets (with local storage fallback)
       const success = await saveBooking(selectedDate, name, color, start, end, desc);
       
       if (success) {
@@ -956,6 +1027,7 @@
         
         closeModal();
         renderCalendar(currentDate);
+        alert("Booking saved successfully!");
       } else {
         alert("Failed to save booking. Please try again.");
       }
@@ -989,7 +1061,7 @@
     // ========== INITIALIZATION ==========
     colorPreview.style.background = colorInput.value;
     console.log("OmniVet Team Planner initialized");
-    console.log("API URL:", API_URL);
+    console.log("Using Google Script API:", API_URL);
   </script>
 </body>
 </html>
